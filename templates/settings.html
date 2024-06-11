@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Settings
+{% endblock %}
+
+{% block main %}
+
+<form method="POST" action="/upload" enctype="multipart/form-data">
+    <div class="mb-3">
+        <label for="photo" class="form-label">Choose Profile Picture</label>
+        <input type="file" accept="image/*" name="photo" class="form-control mx-auto w-auto">
+    </div>
+    <div class="mb-3">
+        <button class="btn btn-primary" type="submit">Upload</button>
+    </div>
+</form>
+
+
+
+{% endblock %}
