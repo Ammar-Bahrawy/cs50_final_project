@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>My first three.js app</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+      }
+      nav {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 100;
+      }
+      button {
+        margin: 5px;
+        padding: 10px;
+        font-size: 14px;
+      }
+      #container {
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@10.8.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@10.8.1/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <nav>
+      <button id="example1Button">1 cube</button>
+      <button id="example2Button">triangle 2 screens</button>
+      <button id="example3Button">full cube</button>
+      <button id="example4Button">transform controls</button>
+      <button id="example5Button">1 cube rotation</button>
+      <button id="example6Button">full cube rotation</button>
+      <button id="example7Button">full cube rotation + 2 screens</button>
+      <button id="example8Button">new rotation</button>
+    </nav>
+    <div id="container"></div>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
