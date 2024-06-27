@@ -25,18 +25,6 @@ initRaycast(
   getCenter,
   centers
 );
-// const circleTransformControls = initCirclesTransformControls(
-//   cameras[0], // camera
-//   renderer,
-//   scene,
-//   circles,
-//   cubes,
-//   orbitControls,
-//   rotateAxis
-// );
-// initGridHelper(scene);
-
-// positionControls(circleTransformControls);
 
 window.addEventListener("resize", function () {
   resize(camera, renderer); // , cameras[0]
@@ -94,7 +82,7 @@ function initGridHelper(scene) {
   const divisions = 10;
   const gridHelperY = new THREE.GridHelper(size, divisions, 0x0000ff);
   const gridHelper = new THREE.GridHelper(size, divisions, 0x0000ff);
-  gridHelperY.rotation.x = Math.PI / 2; // Rotate to lie on XY plane
+  gridHelperY.rotation.x = Math.PI / 2;
   scene.add(gridHelperY);
   scene.add(gridHelper);
 }
@@ -105,8 +93,7 @@ function initCirclesTransformControls(
   scene,
   circles,
   cubes,
-  orbitControls,
-  rotateAxis
+  orbitControls
 ) {
   let circlesTransformControls = [];
   for (let i = 0, n = circles.length; i < n; i++) {
@@ -122,12 +109,10 @@ function initCirclesTransformControls(
     scene.add(circleTransformControls);
 
     circleTransformControls.addEventListener("mouseDown", () => {
-      // rotateAxis(circles[i]);
       connectCubes(circles[i], cubes);
     });
 
     circleTransformControls.addEventListener("mouseUp", () => {
-      rotateAxis(circles[i]);
       disconnectCubes(cubes, scene);
     });
 
@@ -153,12 +138,12 @@ function toggleOrbitControls(orbitControls, down) {
   }
 }
 
-function rotateAxis(circle) {
-  let axis = checkAxis(circle);
-  axis = axis == "y" ? "z" : axis;
+function rotateAxis(center) {
+  let axis = checkAxis(center);
+  // axis = axis == "y" ? "z" : axis;
 
   const snapAngles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]; // Snap angles in radians
-  const currentRotation = circle.rotation[axis]; // Get current rotation around axis
+  const currentRotation = center.rotation[axis]; // Get current rotation around axis
 
   // Find the nearest snap angle
   let nearestAngle = snapAngles[0];
@@ -174,11 +159,10 @@ function rotateAxis(circle) {
       nearestAngle = snapAngles[i];
     }
   }
-  console.log("rotateAxis: ", axis);
-  console.log("current angle: ", currentRotation);
-  console.log("Nearest angle: ", nearestAngle);
-  // Set the circle's rotation to the nearest snap angle
-  circle.rotation[axis] = nearestAngle;
+  // console.log("current angle: ", currentRotation);
+  // console.log("Nearest angle: ", nearestAngle);
+  // Set the center's rotation to the nearest snap angle
+  center.rotation[axis] = nearestAngle;
 }
 
 const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -188,7 +172,7 @@ const material = new THREE.MeshBasicMaterial({
 });
 
 function initCube(scene, numCubes, gridSize) {
-  const cubeSize = gridSize / Math.cbrt(numCubes) - 0.01; // Calculate cube size
+  const cubeSize = gridSize / Math.cbrt(numCubes); // Calculate cube size - 0.01
   const cubes = [];
 
   for (let x = 0; x < Math.cbrt(numCubes); x++) {
@@ -241,6 +225,7 @@ function connectCubes(center, cubes, axis) {
       worldPosition.x = parseFloat(worldPosition.x.toFixed(6));
       worldPosition.y = parseFloat(worldPosition.y.toFixed(6));
       worldPosition.z = parseFloat(worldPosition.z.toFixed(6));
+      cubes[i].material.color.set(0xffffff);
       cubes[i].position.copy(worldPosition);
       //   console.log("after: ", cubes[i].position);
       center.add(cubes[i]);
@@ -252,13 +237,15 @@ function disconnectCubes(cubes, scene) {
   for (let i = 0; i < cubes.length; i++) {
     const worldPosition = new THREE.Vector3();
     cubes[i].getWorldPosition(worldPosition);
-    cubes[i].position.copy(worldPosition);
+    cubes[i].position.x = Math.round(worldPosition.x * 10) / 10;
+    cubes[i].position.y = Math.round(worldPosition.y * 10) / 10;
+    cubes[i].position.z = Math.round(worldPosition.z * 10) / 10;
     scene.add(cubes[i]);
     console.log("disconnected");
   }
 }
 
-function initCenters(scene, cubes, connectCubes, disconnectCubes) {
+function initCenters(scene, cubes) {
   let centers = [];
   for (let i = 0, n = cubes.length; i < n; i++) {
     for (let x = 0.5; x <= 2.5; x++) {
@@ -277,8 +264,8 @@ function initCenters(scene, cubes, connectCubes, disconnectCubes) {
             const vector = new THREE.Vector3(x, y, z);
 
             if (cubes[i].position.equals(vector)) {
-              console.log("vector: ", vector);
-              console.log("cube position: ", cubes[i].position);
+              // console.log("vector: ", vector);
+              // console.log("cube position: ", cubes[i].position);
               centers.push(cubes[i]);
               cubes[i].material.transparent = true;
               cubes[i].material.opacity = 0.5;
@@ -298,18 +285,14 @@ function checkAxis(center) {
   let axis;
   if (center.position.x != 1.5) {
     axis = "x";
-  }
-  if (center.position.y != 1.5) {
+  } else if (center.position.y != 1.5) {
     axis = "y";
-  }
-  if (center.position.z != 1.5) {
+  } else if (center.position.z != 1.5) {
     axis = "z";
   }
-  console.log(axis);
+  // console.log(axis);
   return axis;
 }
-
-function checkAxis2() {}
 
 function resize(camera, renderer) {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -318,19 +301,19 @@ function resize(camera, renderer) {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function onPointerDown(event, pointer, intersects, cubes, orbitControls) {
+function onPointerDown(event, intersects, cubes, orbitControls) {
   if (intersects.length > 0) {
     const closestObject = intersects[0].object;
 
     for (let i = 0, n = cubes.length; i < n; i++) {
       if (closestObject == cubes[i]) {
-        console.log("Clicked a cube");
+        console.log("Clicked a cube: ", cubes[i].position);
         toggleOrbitControls(orbitControls, "down");
 
         // *****************************
 
         const facePosition = getFacePosition(intersects[0]);
-        console.log("Face position: ", facePosition);
+        // console.log("Face position: ", facePosition);
 
         // *****************************
 
@@ -349,7 +332,7 @@ function getFacePosition(intersect) {
   const geometry = intersect.object.geometry;
   const vertices = geometry.attributes.position;
 
-  console.log("Face: ", face);
+  // console.log("Face: ", face);
 
   const vA = new THREE.Vector3().fromBufferAttribute(vertices, face.a);
   const vB = new THREE.Vector3().fromBufferAttribute(vertices, face.b);
@@ -378,41 +361,81 @@ function initRaycast(
   let mousePosition = null;
   let down = false;
   let axis;
+  let axis3D;
+  let position;
+  let center;
+  let intersects;
+  let isMouseDown = false;
+  let rotationSpeed = 0.01;
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
+  // const pointer = new THREE.Vector3();
 
   renderer.domElement.addEventListener("pointerup", function (event) {
     toggleOrbitControls(orbitControls, !event.value);
     // mousePosition = null;
+    if (center) rotateAxis(center);
+    isMouseDown = false;
     disconnectCubes(cubes, scene);
+    center = null;
   });
 
   renderer.domElement.addEventListener("pointerdown", function (event) {
     pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
-    const intersects = raycaster.intersectObjects(scene.children);
-    let position = onPointerDown(
-      event,
-      pointer,
-      intersects,
-      cubes,
-      orbitControls
-    );
+    intersects = raycaster.intersectObjects(scene.children);
+    position = onPointerDown(event, intersects, cubes, orbitControls);
 
     if (position) {
       down = true;
-      let center = getCenter(centers, position, axis);
-      if (center) connectCubes(center, cubes, axis);
     }
     mousePosition = {
       x: event.clientX,
       y: event.clientY,
     };
+    isMouseDown = true;
   });
+
   renderer.domElement.addEventListener("mousemove", function (event) {
     if (down) {
       [down, axis] = getAxis(event, mousePosition);
+      // console.log("position and axis: ", position + axis);
+      center = getCenter(centers, position, axis, intersects[0].point);
+      if (center) {
+        axis3D = ConnectToCenter(center, cubes, axis);
+        down = false;
+      }
+    }
+    // ********************************************************************************
+    if (isMouseDown) {
+      const deltaMove = {
+        x: event.clientX - mousePosition.x,
+        y: event.clientY - mousePosition.y,
+      };
+
+      // Function to rotate object along specified axis
+      function rotateObject(object, deltaMove, axis) {
+        console.log("rotation", object.rotation);
+        switch (axis) {
+          case "x":
+            object.rotation.x += deltaMove.y * rotationSpeed;
+            break;
+          case "y":
+            object.rotation.y += deltaMove.x * rotationSpeed;
+            console.log("rotating z");
+            break;
+          case "z":
+            object.rotation.z += -deltaMove.y * rotationSpeed; // or use deltaMove.x if preferred
+            break;
+        }
+      }
+
+      if (center) rotateObject(center, deltaMove, axis3D);
+      mousePosition = {
+        x: event.clientX,
+        y: event.clientY,
+      };
     }
   });
 }
@@ -432,9 +455,40 @@ function getAxis(event, mousePosition) {
   }
 }
 
-function getCenter(centers, position, axis) {
-  let centerY = axis == "x" ? 2.5 : 1.5;
-  let positionY = position.y;
+function getCenter(centers, position, axis, intersectPoint) {
+  // let centerY = axis == "x" ? 2.5 : 1.5;
+  // let positionY = position.y;
+  let newPosition = new THREE.Vector3();
+
+  if (intersectPoint.x == 3 || intersectPoint.x == 0) {
+    newPosition.x = 1.5;
+    if (axis == "y") {
+      newPosition.y = 1.5;
+      newPosition.z = position.z;
+    } else {
+      newPosition.z = 1.5;
+      newPosition.y = position.y;
+    }
+  } else if (intersectPoint.z == 3 || intersectPoint.z == 0) {
+    newPosition.z = 1.5;
+    if (axis == "y") {
+      newPosition.y = 1.5;
+      newPosition.x = position.x;
+    } else {
+      newPosition.x = 1.5;
+      newPosition.y = position.y;
+    }
+  } else if (intersectPoint.y == 3 || intersectPoint.y == 0) {
+    newPosition.y = 1.5;
+    if (axis == "y") {
+      newPosition.x = 1.5;
+      newPosition.z = position.z;
+    } else {
+      newPosition.y = 1.5;
+      newPosition.x = position.x;
+    }
+  }
+
   // if (axis == "x") {
   //   // WILL BE BACK!!
   //   let commonAxis = position.y;
@@ -449,13 +503,47 @@ function getCenter(centers, position, axis) {
   //     }
   //   }
   // }
-
   for (let i = 0, n = centers.length; i < n; i++) {
-    if (centers[i].position[axis] === centerY) {
+    if (centers[i].position.equals(newPosition)) {
+      centers[i].material.color.set(Math.random() * 0xffffff);
       console.log("FOUND CENTER!");
       return centers[i];
     }
   }
+}
+
+function ConnectToCenter(center, cubes, axis) {
+  // let min = [0, 2];
+  // let max = [1, 3];
+  // let index;
+  let side;
+
+  if (center.position.y == 0.5 || center.position.y == 2.5) side = "y";
+  if (center.position.x == 0.5 || center.position.x == 2.5) side = "x";
+  if (center.position.z == 0.5 || center.position.z == 2.5) side = "z";
+  console.log("center position: ", center.position);
+  console.log("center side: ", side);
+  let color = Math.random() * 0xffffff;
+  for (let i = 0; i < cubes.length; i++) {
+    if (
+      cubes[i].position[side] == center.position[side] &&
+      cubes[i] != center
+    ) {
+      console.log("connected a cube to center");
+      const worldPosition = new THREE.Vector3();
+      cubes[i].getWorldPosition(worldPosition);
+      // console.log("before: ", cubes[i].position);
+      center.worldToLocal(worldPosition);
+      worldPosition.x = parseFloat(worldPosition.x.toFixed(6));
+      worldPosition.y = parseFloat(worldPosition.y.toFixed(6));
+      worldPosition.z = parseFloat(worldPosition.z.toFixed(6));
+      cubes[i].material.color.set(color);
+      cubes[i].position.copy(worldPosition);
+      //   console.log("after: ", cubes[i].position);
+      center.add(cubes[i]);
+    }
+  }
+  return side;
 }
 // function
 
