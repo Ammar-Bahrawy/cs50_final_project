@@ -23,7 +23,8 @@ initRaycast(
   orbitControls,
   getAxis,
   getCenter,
-  centers
+  centers,
+  resetCentersRotation
 );
 
 window.addEventListener("resize", function () {
@@ -139,30 +140,31 @@ function toggleOrbitControls(orbitControls, down) {
 }
 
 function rotateAxis(center) {
-  let axis = checkAxis(center);
-  // axis = axis == "y" ? "z" : axis;
+  let axis = ["x", "y", "z"];
+  for (let i = 0; i < 3; i++) {
+    console.log(axis[i]);
+    const snapAngles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]; // Snap angles in radians
+    const currentRotation = center.rotation[axis[i]]; // Get current rotation around axis[i]
 
-  const snapAngles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]; // Snap angles in radians
-  const currentRotation = center.rotation[axis]; // Get current rotation around axis
+    // Find the nearest snap angle
+    let nearestAngle = snapAngles[0];
+    let minDifference = Math.abs(currentRotation - snapAngles[0]);
 
-  // Find the nearest snap angle
-  let nearestAngle = snapAngles[0];
-  let minDifference = Math.abs(currentRotation - snapAngles[0]);
+    for (let i = 1; i < snapAngles.length; i++) {
+      let difference = Math.abs(currentRotation - snapAngles[i]);
+      // Ensure difference is within 2π range for correct comparison
+      difference = difference > Math.PI ? Math.PI * 2 - difference : difference;
 
-  for (let i = 1; i < snapAngles.length; i++) {
-    let difference = Math.abs(currentRotation - snapAngles[i]);
-    // Ensure difference is within 2π range for correct comparison
-    difference = difference > Math.PI ? Math.PI * 2 - difference : difference;
-
-    if (difference < minDifference) {
-      minDifference = difference;
-      nearestAngle = snapAngles[i];
+      if (difference < minDifference) {
+        minDifference = difference;
+        nearestAngle = snapAngles[i];
+      }
     }
+    // console.log("current angle: ", currentRotation);
+    // console.log("Nearest angle: ", nearestAngle);
+    // Set the center's rotation to the nearest snap angle
+    center.rotation[axis[i]] = nearestAngle;
   }
-  // console.log("current angle: ", currentRotation);
-  // console.log("Nearest angle: ", nearestAngle);
-  // Set the center's rotation to the nearest snap angle
-  center.rotation[axis] = nearestAngle;
 }
 
 const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -211,7 +213,7 @@ function connectCubes(center, cubes, axis) {
   } else {
     index = 1;
   }
-  for (let i = 0; i < cubes.length; i++) {
+  for (let i = 0, n = cubes.length; i < n; i++) {
     if (
       cubes[i].position[axis] > min[index] &&
       cubes[i].position[axis] < max[index] &&
@@ -281,18 +283,26 @@ function initCenters(scene, cubes) {
   return centers;
 }
 
-function checkAxis(center) {
-  let axis;
-  if (center.position.x != 1.5) {
-    axis = "x";
-  } else if (center.position.y != 1.5) {
-    axis = "y";
-  } else if (center.position.z != 1.5) {
-    axis = "z";
-  }
-  // console.log(axis);
-  return axis;
-}
+// function checkAxis(center, isCenter, cubeSide) {
+//   let axis;
+//   if (center.position.x != 1.5) {
+//     axis = "x";
+//   } else if (center.position.y != 1.5) {
+//     axis = "y";
+//   } else if (center.position.z != 1.5) {
+//     axis = "z";
+//   }
+//   if (isCenter) {
+//     if (cubeSide == "x") {
+//       axis = "z";
+//     } else if (cubeSide == "z") {
+//       axis = "x";
+//     } else if (cubeSide == "y") {
+//       axis = "x";
+//     }
+//   }
+//   return axis;
+// }
 
 function resize(camera, renderer) {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -307,7 +317,7 @@ function onPointerDown(event, intersects, cubes, orbitControls) {
 
     for (let i = 0, n = cubes.length; i < n; i++) {
       if (closestObject == cubes[i]) {
-        console.log("Clicked a cube: ", cubes[i].position);
+        // console.log("Clicked a cube: ", cubes[i].position);
         toggleOrbitControls(orbitControls, "down");
 
         // *****************************
@@ -356,7 +366,8 @@ function initRaycast(
   orbitControls,
   getAxis,
   getCenter,
-  centers
+  centers,
+  resetCentersRotation
 ) {
   let mousePosition = null;
   let intersectPosition = null;
@@ -368,6 +379,7 @@ function initRaycast(
   let intersects;
   let isMouseDown = false;
   let rotationSpeed = 0.01;
+  let face, cubeSide;
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   // const pointer = new THREE.Vector3();
@@ -378,6 +390,8 @@ function initRaycast(
     if (center) rotateAxis(center);
     isMouseDown = false;
     disconnectCubes(cubes, scene);
+    resetCentersRotation(centers);
+
     center = null;
   });
 
@@ -409,9 +423,14 @@ function initRaycast(
     if (down) {
       [down, axis] = getAxis(event, mousePosition);
       // console.log("position and axis: ", position + axis);
-      center = getCenter(centers, position, axis, intersects[0].point);
+      [center, face, cubeSide] = getCenter(
+        centers,
+        position,
+        axis,
+        intersects[0].point
+      );
       if (center) {
-        axis3D = ConnectToCenter(center, cubes, axis);
+        axis3D = ConnectToCenter(center, cubes, axis, face, cubeSide);
         down = false;
       }
     }
@@ -436,7 +455,7 @@ function initRaycast(
       //   y: intersects[0].point.y,
       //   z: intersects[0].point.z,
       // };
-      if (center) rotateObject(center, deltaMove, axis3D, rotationSpeed);
+      if (center) rotateObject(center, deltaMove, axis3D, rotationSpeed, face);
     }
   });
 }
@@ -460,6 +479,7 @@ function getCenter(centers, position, axis, intersectPoint) {
   // let centerY = axis == "x" ? 2.5 : 1.5;
   // let positionY = position.y;
   let newPosition = new THREE.Vector3();
+  let cubeSide;
   const conditionX = position.x == 1.5,
     conditionY = position.y == 1.5,
     conditionZ = position.z == 1.5,
@@ -467,66 +487,47 @@ function getCenter(centers, position, axis, intersectPoint) {
       (conditionX && conditionY) ||
       (conditionX && conditionZ) ||
       (conditionZ && conditionY);
+  let face = 1;
 
+  if (intersectPoint.x == 3 || intersectPoint.x == 0) {
+    face = intersectPoint.x == 0 ? 1 : -1;
+    cubeSide = "x";
+    newPosition.x = 1.5;
+    if (axis == "y") {
+      newPosition.y = 1.5;
+      newPosition.z = position.z;
+    } else {
+      newPosition.z = 1.5;
+      newPosition.y = position.y;
+    }
+  } else if (intersectPoint.z == 3 || intersectPoint.z == 0) {
+    face = intersectPoint.z == 0 ? 1 : -1;
+    cubeSide = "z";
+    newPosition.z = 1.5;
+    if (axis == "y") {
+      newPosition.y = 1.5;
+      newPosition.x = position.x;
+    } else {
+      newPosition.x = 1.5;
+      newPosition.y = position.y;
+    }
+  } else if (intersectPoint.y == 3 || intersectPoint.y == 0) {
+    face = intersectPoint.y == 0 ? 1 : -1;
+    cubeSide = "y";
+    newPosition.y = 1.5;
+    if (axis == "y") {
+      newPosition.x = 1.5;
+      newPosition.z = position.z;
+    } else {
+      newPosition.z = 1.5;
+      newPosition.x = position.x;
+    }
+  }
   if (firstCondition) {
     newPosition.x = 1.5;
     newPosition.y = 1.5;
     newPosition.z = 1.5;
     console.log("CENTER IS CENTER");
-  } else if (intersectPoint.x == 3 || intersectPoint.x == 0) {
-    newPosition.x = 1.5;
-    if (axis == "y") {
-      newPosition.y = 1.5;
-      newPosition.z = position.z;
-    } else {
-      newPosition.z = 1.5;
-      newPosition.y = position.y;
-    }
-  } else if (intersectPoint.z == 3 || intersectPoint.z == 0) {
-    newPosition.z = 1.5;
-    if (axis == "y") {
-      newPosition.y = 1.5;
-      newPosition.x = position.x;
-    } else {
-      newPosition.x = 1.5;
-      newPosition.y = position.y;
-    }
-  } else if (intersectPoint.y == 3 || intersectPoint.y == 0) {
-    newPosition.y = 1.5;
-    if (axis == "y") {
-      newPosition.x = 1.5;
-      newPosition.z = position.z;
-    } else {
-      newPosition.z = 1.5;
-      newPosition.x = position.x;
-    }
-  } else if (intersectPoint.x == 3 || intersectPoint.x == 0) {
-    newPosition.x = 1.5;
-    if (axis == "y") {
-      newPosition.y = 1.5;
-      newPosition.z = position.z;
-    } else {
-      newPosition.z = 1.5;
-      newPosition.y = position.y;
-    }
-  } else if (intersectPoint.z == 3 || intersectPoint.z == 0) {
-    newPosition.z = 1.5;
-    if (axis == "y") {
-      newPosition.y = 1.5;
-      newPosition.x = position.x;
-    } else {
-      newPosition.x = 1.5;
-      newPosition.y = position.y;
-    }
-  } else if (intersectPoint.y == 3 || intersectPoint.y == 0) {
-    newPosition.y = 1.5;
-    if (axis == "y") {
-      newPosition.x = 1.5;
-      newPosition.z = position.z;
-    } else {
-      newPosition.z = 1.5;
-      newPosition.x = position.x;
-    }
   }
   // } bull shit, may be usefull later
   // if (position.x == 1.5) {
@@ -554,22 +555,47 @@ function getCenter(centers, position, axis, intersectPoint) {
     if (centers[i].position.equals(newPosition)) {
       centers[i].material.color.set(Math.random() * 0xffffff);
       console.log("FOUND CENTER!");
-      return centers[i];
+      return [centers[i], face, cubeSide];
     }
   }
 }
 
-function ConnectToCenter(center, cubes, axis) {
+function ConnectToCenter(center, cubes, axis, face, cubeSide) {
   // let min = [0, 2];
   // let max = [1, 3];
   // let index;
   let side;
 
-  if (center.position.y == 0.5 || center.position.y == 2.5) side = "y";
   if (center.position.x == 0.5 || center.position.x == 2.5) side = "x";
+  if (center.position.y == 0.5 || center.position.y == 2.5) side = "y";
   if (center.position.z == 0.5 || center.position.z == 2.5) side = "z";
-  console.log("center position: ", center.position);
-  console.log("center side: ", side);
+
+  if (
+    center.position.x == 1.5 &&
+    center.position.y == 1.5 &&
+    center.position.z == 1.5
+  ) {
+    if (cubeSide == "x") {
+      if (axis == "y") {
+        side = "z";
+      } else {
+        side = "y";
+      }
+    } else if (cubeSide == "y") {
+      if (axis == "y") {
+        side = "x";
+      } else {
+        side = "z";
+      }
+    } else if (cubeSide == "z")
+      if (axis == "y") {
+        side = "x";
+      } else {
+        side = "y";
+      }
+  }
+  // console.log("center position: ", center.position);
+  // console.log("center side: ", side);
   let color = Math.random() * 0xffffff;
   for (let i = 0; i < cubes.length; i++) {
     if (
@@ -594,20 +620,26 @@ function ConnectToCenter(center, cubes, axis) {
 }
 
 // Function to rotate object along specified axis
-function rotateObject(object, deltaMove, axis, rotationSpeed) {
+function rotateObject(object, deltaMove, axis, rotationSpeed, face) {
   switch (axis) {
     case "x":
-      object.rotation.x += deltaMove.y * rotationSpeed;
+      object.rotation.x += -deltaMove.y * rotationSpeed * face;
       break;
     case "y":
       object.rotation.y += deltaMove.x * rotationSpeed;
       break;
     case "z":
-      object.rotation.z += -deltaMove.y * rotationSpeed; // or use deltaMove.x if preferred
+      object.rotation.z += deltaMove.y * rotationSpeed * face; // or use deltaMove.x if preferred
       break;
   }
 }
 
+function resetCentersRotation(centers) {
+  for (let i = 0, n = centers.length; i < n; i++) {
+    centers[i].rotation.set(0, 0, 0);
+    console.log("reseted");
+  }
+}
 // function
 
 // width = 1920
