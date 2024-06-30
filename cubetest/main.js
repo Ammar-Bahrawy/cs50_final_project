@@ -359,6 +359,7 @@ function initRaycast(
   centers
 ) {
   let mousePosition = null;
+  let intersectPosition = null;
   let down = false;
   let axis;
   let axis3D;
@@ -394,6 +395,13 @@ function initRaycast(
       x: event.clientX,
       y: event.clientY,
     };
+
+    // intersectPosition = {
+    //   x: intersects[0].point.x,
+    //   y: intersects[0].point.y,
+    //   z: intersects[0].point.z,
+    // };
+
     isMouseDown = true;
   });
 
@@ -413,29 +421,22 @@ function initRaycast(
         x: event.clientX - mousePosition.x,
         y: event.clientY - mousePosition.y,
       };
+      // const deltaMove = {
+      //   x: intersects[0].point.x - intersectPosition.x,
+      //   y: intersects[0].point.y - intersectPosition.y,
+      //   z: intersects[0].point.z - intersectPosition.z,
+      // };
 
-      // Function to rotate object along specified axis
-      function rotateObject(object, deltaMove, axis) {
-        console.log("rotation", object.rotation);
-        switch (axis) {
-          case "x":
-            object.rotation.x += deltaMove.y * rotationSpeed;
-            break;
-          case "y":
-            object.rotation.y += deltaMove.x * rotationSpeed;
-            console.log("rotating z");
-            break;
-          case "z":
-            object.rotation.z += -deltaMove.y * rotationSpeed; // or use deltaMove.x if preferred
-            break;
-        }
-      }
-
-      if (center) rotateObject(center, deltaMove, axis3D);
       mousePosition = {
         x: event.clientX,
         y: event.clientY,
       };
+      // intersectPosition = {
+      //   x: intersects[0].point.x,
+      //   y: intersects[0].point.y,
+      //   z: intersects[0].point.z,
+      // };
+      if (center) rotateObject(center, deltaMove, axis3D, rotationSpeed);
     }
   });
 }
@@ -459,8 +460,20 @@ function getCenter(centers, position, axis, intersectPoint) {
   // let centerY = axis == "x" ? 2.5 : 1.5;
   // let positionY = position.y;
   let newPosition = new THREE.Vector3();
+  const conditionX = position.x == 1.5,
+    conditionY = position.y == 1.5,
+    conditionZ = position.z == 1.5,
+    firstCondition =
+      (conditionX && conditionY) ||
+      (conditionX && conditionZ) ||
+      (conditionZ && conditionY);
 
-  if (intersectPoint.x == 3 || intersectPoint.x == 0) {
+  if (firstCondition) {
+    newPosition.x = 1.5;
+    newPosition.y = 1.5;
+    newPosition.z = 1.5;
+    console.log("CENTER IS CENTER");
+  } else if (intersectPoint.x == 3 || intersectPoint.x == 0) {
     newPosition.x = 1.5;
     if (axis == "y") {
       newPosition.y = 1.5;
@@ -484,10 +497,44 @@ function getCenter(centers, position, axis, intersectPoint) {
       newPosition.x = 1.5;
       newPosition.z = position.z;
     } else {
+      newPosition.z = 1.5;
+      newPosition.x = position.x;
+    }
+  } else if (intersectPoint.x == 3 || intersectPoint.x == 0) {
+    newPosition.x = 1.5;
+    if (axis == "y") {
       newPosition.y = 1.5;
+      newPosition.z = position.z;
+    } else {
+      newPosition.z = 1.5;
+      newPosition.y = position.y;
+    }
+  } else if (intersectPoint.z == 3 || intersectPoint.z == 0) {
+    newPosition.z = 1.5;
+    if (axis == "y") {
+      newPosition.y = 1.5;
+      newPosition.x = position.x;
+    } else {
+      newPosition.x = 1.5;
+      newPosition.y = position.y;
+    }
+  } else if (intersectPoint.y == 3 || intersectPoint.y == 0) {
+    newPosition.y = 1.5;
+    if (axis == "y") {
+      newPosition.x = 1.5;
+      newPosition.z = position.z;
+    } else {
+      newPosition.z = 1.5;
       newPosition.x = position.x;
     }
   }
+  // } bull shit, may be usefull later
+  // if (position.x == 1.5) {
+  //   if (axis == "x") {
+  //     newPosition.x = 1.5;
+  //     newPosition.z = 1.5;
+  //     newPosition.y = position.y;
+  //   }
 
   // if (axis == "x") {
   //   // WILL BE BACK!!
@@ -545,6 +592,22 @@ function ConnectToCenter(center, cubes, axis) {
   }
   return side;
 }
+
+// Function to rotate object along specified axis
+function rotateObject(object, deltaMove, axis, rotationSpeed) {
+  switch (axis) {
+    case "x":
+      object.rotation.x += deltaMove.y * rotationSpeed;
+      break;
+    case "y":
+      object.rotation.y += deltaMove.x * rotationSpeed;
+      break;
+    case "z":
+      object.rotation.z += -deltaMove.y * rotationSpeed; // or use deltaMove.x if preferred
+      break;
+  }
+}
+
 // function
 
 // width = 1920
