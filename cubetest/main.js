@@ -12,7 +12,11 @@ const renderer = initRenderer();
 
 const orbitControls = initOrbitControls(camera, renderer);
 // const circles = initCircles(scene);
-const cubes = initCube(scene, numCubes, gridSize);
+
+const textures = initTexture();
+initLight(scene);
+
+const cubes = initCube(scene, numCubes, gridSize, textures);
 const centers = initCenters(scene, cubes, connectCubes, disconnectCubes);
 initRaycast(
   camera,
@@ -173,20 +177,30 @@ const material = new THREE.MeshBasicMaterial({
   wireframe: false,
 });
 
-function initCube(scene, numCubes, gridSize) {
+function initCube(scene, numCubes, gridSize, materials) {
   const cubeSize = gridSize / Math.cbrt(numCubes); // Calculate cube size - 0.01
   const cubes = [];
 
-  for (let x = 0; x < Math.cbrt(numCubes); x++) {
-    for (let y = 0; y < Math.cbrt(numCubes); y++) {
-      for (let z = 0; z < Math.cbrt(numCubes); z++) {
+  for (let x = 0, n = Math.cbrt(numCubes); x < n; x++) {
+    for (let y = 0; y < n; y++) {
+      for (let z = 0; z < n; z++) {
         const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-        const material = new THREE.MeshBasicMaterial({
-          color: Math.random() * 0xffffff,
-          wireframe: false,
-        });
+        // const material = new THREE.MeshStandardMaterial({
+        //   map: textures,
+        // });
 
-        const cube = new THREE.Mesh(geometry, material);
+        const cube = new THREE.Mesh(geometry, materials);
+
+        // ***
+
+        if (x == 0) {
+          const material = new THREE.MeshStandardMaterial({
+            color: 0x222222,
+          });
+          cube.material = material;
+        }
+
+        // ***
 
         cube.position.set(x + 0.5, y + 0.5, z + 0.5);
         // console.log("Cube position: ", cube.position);
@@ -380,6 +394,9 @@ function initRaycast(
   let isMouseDown = false;
   let rotationSpeed = 0.01;
   let face, cubeSide;
+  let connectedCubes = [];
+  let centerRotation = null;
+  let centerNewRotation;
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   // const pointer = new THREE.Vector3();
@@ -387,10 +404,15 @@ function initRaycast(
   renderer.domElement.addEventListener("pointerup", function (event) {
     toggleOrbitControls(orbitControls, !event.value);
     // mousePosition = null;
-    if (center) rotateAxis(center);
-    isMouseDown = false;
-    disconnectCubes(cubes, scene);
-    resetCentersRotation(centers);
+    if (center) {
+      rotateAxis(center);
+      centerNewRotation = center.rotation;
+      isMouseDown = false;
+      disconnectCubes(cubes, scene);
+      rotateCubes(connectedCubes, center, centerRotation, centerNewRotation);
+      resetCentersRotation(centers);
+      centerRotation = null;
+    }
 
     center = null;
   });
@@ -430,7 +452,14 @@ function initRaycast(
         intersects[0].point
       );
       if (center) {
-        axis3D = ConnectToCenter(center, cubes, axis, face, cubeSide);
+        if (!centerRotation) centerRotation = center.rotation; // 8*****************************************
+        [axis3D, connectedCubes] = ConnectToCenter(
+          center,
+          cubes,
+          axis,
+          face,
+          cubeSide
+        );
         down = false;
       }
     }
@@ -553,7 +582,7 @@ function getCenter(centers, position, axis, intersectPoint) {
   // }
   for (let i = 0, n = centers.length; i < n; i++) {
     if (centers[i].position.equals(newPosition)) {
-      centers[i].material.color.set(Math.random() * 0xffffff);
+      // centers[i].material.color.set(Math.random() * 0xffffff);
       console.log("FOUND CENTER!");
       return [centers[i], face, cubeSide];
     }
@@ -561,10 +590,8 @@ function getCenter(centers, position, axis, intersectPoint) {
 }
 
 function ConnectToCenter(center, cubes, axis, face, cubeSide) {
-  // let min = [0, 2];
-  // let max = [1, 3];
-  // let index;
   let side;
+  let connectedCubes = [];
 
   if (center.position.x == 0.5 || center.position.x == 2.5) side = "x";
   if (center.position.y == 0.5 || center.position.y == 2.5) side = "y";
@@ -610,13 +637,14 @@ function ConnectToCenter(center, cubes, axis, face, cubeSide) {
       worldPosition.x = parseFloat(worldPosition.x.toFixed(6));
       worldPosition.y = parseFloat(worldPosition.y.toFixed(6));
       worldPosition.z = parseFloat(worldPosition.z.toFixed(6));
-      cubes[i].material.color.set(color);
+      // cubes[i].material.color.set(color);
       cubes[i].position.copy(worldPosition);
       //   console.log("after: ", cubes[i].position);
       center.add(cubes[i]);
+      connectedCubes.push(cubes[i]);
     }
   }
-  return side;
+  return [side, connectedCubes];
 }
 
 // Function to rotate object along specified axis
@@ -638,6 +666,46 @@ function resetCentersRotation(centers) {
   for (let i = 0, n = centers.length; i < n; i++) {
     centers[i].rotation.set(0, 0, 0);
     console.log("reseted");
+  }
+}
+
+function initTexture() {
+  let textures = [];
+  let materials = [];
+  let textureNames = ["red", "orange", "yellow", "white", "green", "blue"];
+
+  for (let i = 0, n = textureNames.length; i < n; i++) {
+    textures[i] = new THREE.TextureLoader().load(
+      `./static/${textureNames[i]}.png`
+    );
+    materials[i] = new THREE.MeshStandardMaterial({ map: textures[i] });
+  }
+  return materials;
+}
+
+function initLight(scene) {
+  const ambientLight = new THREE.AmbientLight(0xffffff); // White light
+  scene.add(ambientLight);
+}
+
+function rotateCubes(
+  connectedCubes,
+  center,
+  centerRotation,
+  centerNewRotation
+) {
+  let cubeRotation = {
+    x: centerRotation.x - centerNewRotation.x,
+    y: centerRotation.y - centerNewRotation.y,
+    z: centerRotation.z - centerNewRotation.z,
+  };
+
+  for (let i = 0, n = connectedCubes.length; i < n; i++) {
+    connectedCubes[i].rotation.set(
+      cubeRotation.x,
+      cubeRotation.y,
+      cubeRotation.z
+    );
   }
 }
 // function
