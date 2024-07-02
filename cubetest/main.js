@@ -193,12 +193,12 @@ function initCube(scene, numCubes, gridSize, materials) {
 
         // ***
 
-        if (x == 0) {
-          const material = new THREE.MeshStandardMaterial({
-            color: 0x222222,
-          });
-          cube.material = material;
-        }
+        // if (x == 0) {
+        //   const material = new THREE.MeshStandardMaterial({
+        //     color: 0x222222,
+        //   });
+        //   cube.material = material;
+        // }
 
         // ***
 
@@ -409,6 +409,7 @@ function initRaycast(
       centerNewRotation = center.rotation;
       isMouseDown = false;
       disconnectCubes(cubes, scene);
+      console.log("initial: ", centerRotation);
       rotateCubes(connectedCubes, center, centerRotation, centerNewRotation);
       resetCentersRotation(centers);
       centerRotation = null;
@@ -452,7 +453,10 @@ function initRaycast(
         intersects[0].point
       );
       if (center) {
-        if (!centerRotation) centerRotation = center.rotation; // 8*****************************************
+        if (!centerRotation) {
+          centerRotation = center.rotation;
+          console.log("initial: ", centerRotation);
+        } // 8*****************************************
         [axis3D, connectedCubes] = ConnectToCenter(
           center,
           cubes,
@@ -484,7 +488,15 @@ function initRaycast(
       //   y: intersects[0].point.y,
       //   z: intersects[0].point.z,
       // };
-      if (center) rotateObject(center, deltaMove, axis3D, rotationSpeed, face);
+      if (center)
+        rotateObject(
+          center,
+          deltaMove,
+          axis3D,
+          rotationSpeed,
+          face,
+          connectedCubes
+        );
     }
   });
 }
@@ -648,7 +660,27 @@ function ConnectToCenter(center, cubes, axis, face, cubeSide) {
 }
 
 // Function to rotate object along specified axis
-function rotateObject(object, deltaMove, axis, rotationSpeed, face) {
+function rotateObject(
+  object,
+  deltaMove,
+  axis,
+  rotationSpeed,
+  face,
+  connectedCubes
+) {
+  // for (let i = 0, n = connectedCubes.length; i < n; i++) {
+  //   switch (axis) {
+  //     case "x":
+  //       connectedCubes[i].rotation.x += -deltaMove.y * rotationSpeed * face;
+  //       break;
+  //     case "y":
+  //       connectedCubes[i].rotation.y += deltaMove.x * rotationSpeed;
+  //       break;
+  //     case "z":
+  //       connectedCubes[i].rotation.z += deltaMove.y * rotationSpeed * face; // or use deltaMove.x if preferred
+  //       break;
+  //   }
+  // }
   switch (axis) {
     case "x":
       object.rotation.x += -deltaMove.y * rotationSpeed * face;
@@ -699,13 +731,14 @@ function rotateCubes(
     y: centerRotation.y - centerNewRotation.y,
     z: centerRotation.z - centerNewRotation.z,
   };
-
+  console.log("initial: ", centerRotation);
+  console.log("current: ", centerNewRotation);
+  console.log("new: ", cubeRotation);
   for (let i = 0, n = connectedCubes.length; i < n; i++) {
-    connectedCubes[i].rotation.set(
-      cubeRotation.x,
-      cubeRotation.y,
-      cubeRotation.z
-    );
+    console.log("SHIT SHOULD WORK"); // shit does not work
+    connectedCubes[i].rotation.x += centerNewRotation.x;
+    connectedCubes[i].rotation.y += centerNewRotation.y;
+    connectedCubes[i].rotation.z += centerNewRotation.z; // shit works!!
   }
 }
 // function
