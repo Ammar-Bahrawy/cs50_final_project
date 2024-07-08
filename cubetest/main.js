@@ -17,7 +17,7 @@ const textures = initTexture();
 initLight(scene);
 
 const cubes = initCube(scene, numCubes, gridSize, textures);
-const centers = initCenters(scene, cubes, connectCubes, disconnectCubes);
+const centers = initCenters(scene, cubes, textures);
 initRaycast(
   camera,
   scene,
@@ -74,7 +74,7 @@ function initRenderer() {
 function initOrbitControls(camera, renderer) {
   const orbitControls = new OrbitControls(camera, renderer.domElement);
   const newCenter = new THREE.Vector3(1.5, 1.5, 1.5);
-  orbitControls.enableZoom = false;
+  // orbitControls.enableZoom = false;
   orbitControls.enablePan = false;
   orbitControls.target.copy(newCenter);
   orbitControls.update();
@@ -261,8 +261,10 @@ function disconnectCubes(cubes, scene) {
   }
 }
 
-function initCenters(scene, cubes) {
+function initCenters(scene, cubes, textures) {
   let centers = [];
+  let count1 = [1, 3, 5, 4, 2, 0];
+  let countCount = 0;
   for (let i = 0, n = cubes.length; i < n; i++) {
     for (let x = 0.5; x <= 2.5; x++) {
       for (let y = 0.5; y <= 2.5; y++) {
@@ -274,17 +276,21 @@ function initCenters(scene, cubes) {
           if (z === 1.5) count++;
 
           if (count >= 2) {
-            let xAxis = x === 1.5 ? 1 : 0;
-            let yAxis = y === 1.5 ? 1 : 0;
-            let zAxis = z === 1.5 ? 1 : 0;
             const vector = new THREE.Vector3(x, y, z);
 
             if (cubes[i].position.equals(vector)) {
               // console.log("vector: ", vector);
               // console.log("cube position: ", cubes[i].position);
+              console.log("count1: ", count1);
+              console.log("i: ", i);
+              if (i != 13) {
+                console.log("count1: ", count1[countCount]);
+                cubes[i].material = textures[count1[countCount]];
+                countCount++;
+                // let textureNames = ["orange", "white", "blue", "green", "yellow", "red"];
+                // let textureNames = ["red", "orange", "yellow", "white", "green", "blue"];
+              }
               centers.push(cubes[i]);
-              cubes[i].material.transparent = true;
-              cubes[i].material.opacity = 0.5;
               console.log("cube center added");
             }
           }
@@ -726,14 +732,8 @@ function rotateCubes(
   centerRotation,
   centerNewRotation
 ) {
-  let cubeRotation = {
-    x: centerRotation.x - centerNewRotation.x,
-    y: centerRotation.y - centerNewRotation.y,
-    z: centerRotation.z - centerNewRotation.z,
-  };
   console.log("initial: ", centerRotation);
   console.log("current: ", centerNewRotation);
-  console.log("new: ", cubeRotation);
   for (let i = 0, n = connectedCubes.length; i < n; i++) {
     console.log("SHIT SHOULD WORK"); // shit does not work
     connectedCubes[i].rotation.x += centerNewRotation.x;
