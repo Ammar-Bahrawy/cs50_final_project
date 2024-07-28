@@ -92,48 +92,6 @@ function initGridHelper(scene) {
   scene.add(gridHelper);
 }
 
-function initCirclesTransformControls(
-  camera,
-  renderer,
-  scene,
-  circles,
-  cubes,
-  orbitControls
-) {
-  let circlesTransformControls = [];
-  for (let i = 0, n = circles.length; i < n; i++) {
-    const circleTransformControls = new TransformControls(
-      camera,
-      renderer.domElement
-    );
-    circleTransformControls.attach(circles[i]);
-    circleTransformControls.setMode("rotate");
-    circleTransformControls.setSpace("local");
-    circleTransformControls.showX = false;
-    circleTransformControls.showY = false;
-    scene.add(circleTransformControls);
-
-    circleTransformControls.addEventListener("mouseDown", () => {
-      connectCubes(circles[i], cubes);
-    });
-
-    circleTransformControls.addEventListener("mouseUp", () => {
-      disconnectCubes(cubes, scene);
-    });
-
-    circleTransformControls.addEventListener(
-      "dragging-changed",
-      function (event) {
-        toggleOrbitControls(orbitControls, !event.value); // Disable OrbitControls while dragging
-      }
-    );
-
-    circlesTransformControls.push(circleTransformControls);
-    console.log("circle added control");
-  }
-  return circlesTransformControls;
-}
-
 // Function to toggle OrbitControls
 function toggleOrbitControls(orbitControls, down) {
   if (down == "down") {
@@ -146,7 +104,6 @@ function toggleOrbitControls(orbitControls, down) {
 function rotateAxis(center) {
   let axis = ["x", "y", "z"];
   for (let i = 0; i < 3; i++) {
-    console.log(axis[i]);
     const snapAngles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]; // Snap angles in radians
     const currentRotation = center.rotation[axis[i]]; // Get current rotation around axis[i]
 
@@ -154,19 +111,17 @@ function rotateAxis(center) {
     let nearestAngle = snapAngles[0];
     let minDifference = Math.abs(currentRotation - snapAngles[0]);
 
-    for (let i = 1; i < snapAngles.length; i++) {
-      let difference = Math.abs(currentRotation - snapAngles[i]);
-      // Ensure difference is within 2π range for correct comparison
+    for (let j = 1; j < snapAngles.length; j++) {
+      // Corrected index from i to j
+      let difference = Math.abs(currentRotation - snapAngles[j]);
       difference = difference > Math.PI ? Math.PI * 2 - difference : difference;
 
       if (difference < minDifference) {
         minDifference = difference;
-        nearestAngle = snapAngles[i];
+        nearestAngle = snapAngles[j];
       }
     }
-    // console.log("current angle: ", currentRotation);
-    // console.log("Nearest angle: ", nearestAngle);
-    // Set the center's rotation to the nearest snap angle
+
     center.rotation[axis[i]] = nearestAngle;
   }
 }
@@ -221,7 +176,7 @@ function connectCubes(center, cubes, axis) {
   let index;
 
   // let axis = checkAxis(center);
-  console.log("center position: ", center.position);
+  // console.log("center position: ", center.position);
   if (center.position[axis] == 0.5) {
     index = 0;
   } else {
@@ -233,7 +188,7 @@ function connectCubes(center, cubes, axis) {
       cubes[i].position[axis] < max[index] &&
       center != cubes[i]
     ) {
-      console.log("connected a cube to center");
+      // console.log("connected a cube to center");
       const worldPosition = new THREE.Vector3();
       cubes[i].getWorldPosition(worldPosition);
       // console.log("before: ", cubes[i].position);
@@ -252,12 +207,19 @@ function connectCubes(center, cubes, axis) {
 function disconnectCubes(cubes, scene) {
   for (let i = 0; i < cubes.length; i++) {
     const worldPosition = new THREE.Vector3();
+    const worldQuaternion = new THREE.Quaternion();
+
+    cubes[i].getWorldQuaternion(worldQuaternion);
+
     cubes[i].getWorldPosition(worldPosition);
     cubes[i].position.x = Math.round(worldPosition.x * 10) / 10;
     cubes[i].position.y = Math.round(worldPosition.y * 10) / 10;
     cubes[i].position.z = Math.round(worldPosition.z * 10) / 10;
+
     scene.add(cubes[i]);
-    console.log("disconnected");
+
+    cubes[i].quaternion.copy(worldQuaternion);
+    // console.log("disconnected");
   }
 }
 
@@ -281,17 +243,17 @@ function initCenters(scene, cubes, textures) {
             if (cubes[i].position.equals(vector)) {
               // console.log("vector: ", vector);
               // console.log("cube position: ", cubes[i].position);
-              console.log("count1: ", count1);
-              console.log("i: ", i);
+              // console.log("count1: ", count1);
+              // console.log("i: ", i);
               if (i != 13) {
-                console.log("count1: ", count1[countCount]);
+                // console.log("count1: ", count1[countCount]);
                 cubes[i].material = textures[count1[countCount]];
                 countCount++;
                 // let textureNames = ["orange", "white", "blue", "green", "yellow", "red"];
                 // let textureNames = ["red", "orange", "yellow", "white", "green", "blue"];
               }
               centers.push(cubes[i]);
-              console.log("cube center added");
+              // console.log("cube center added");
             }
           }
         }
@@ -299,7 +261,7 @@ function initCenters(scene, cubes, textures) {
     }
   }
 
-  console.log(centers.length);
+  // console.log(centers.length);
   return centers;
 }
 
@@ -396,7 +358,7 @@ function initRaycast(
   let axis3D;
   let position;
   let center;
-  let intersects;
+  let intersects = [];
   let isMouseDown = false;
   let rotationSpeed = 0.01;
   let face, cubeSide;
@@ -415,8 +377,8 @@ function initRaycast(
       centerNewRotation = center.rotation;
       isMouseDown = false;
       disconnectCubes(cubes, scene);
-      console.log("initial: ", centerRotation);
-      rotateCubes(connectedCubes, center, centerRotation, centerNewRotation);
+      // rotateCubes(connectedCubes, center, centerRotation, centerNewRotation);
+      // console.log("initial: ", centerRotation);
       resetCentersRotation(centers);
       centerRotation = null;
     }
@@ -452,16 +414,17 @@ function initRaycast(
     if (down) {
       [down, axis] = getAxis(event, mousePosition);
       // console.log("position and axis: ", position + axis);
-      [center, face, cubeSide] = getCenter(
-        centers,
-        position,
-        axis,
-        intersects[0].point
-      );
+      if (centers && position && axis && intersects[0].point)
+        [center, face, cubeSide] = getCenter(
+          centers,
+          position,
+          axis,
+          intersects[0].point
+        );
       if (center) {
         if (!centerRotation) {
           centerRotation = center.rotation;
-          console.log("initial: ", centerRotation);
+          // console.log("initial: ", centerRotation);
         } // 8*****************************************
         [axis3D, connectedCubes] = ConnectToCenter(
           center,
@@ -513,10 +476,10 @@ function getAxis(event, mousePosition) {
     const deltaY = event.clientY - mousePosition.y;
 
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      console.log("Mouse moved along the x-axis first");
+      // console.log("Mouse moved along the x-axis first");
       return [false, "x"];
     } else {
-      console.log("Mouse moved along the y-axis first");
+      // console.log("Mouse moved along the y-axis first");
       return [false, "y"];
     }
   }
@@ -574,7 +537,7 @@ function getCenter(centers, position, axis, intersectPoint) {
     newPosition.x = 1.5;
     newPosition.y = 1.5;
     newPosition.z = 1.5;
-    console.log("CENTER IS CENTER");
+    // console.log("CENTER IS CENTER");
   }
   // } bull shit, may be usefull later
   // if (position.x == 1.5) {
@@ -601,7 +564,7 @@ function getCenter(centers, position, axis, intersectPoint) {
   for (let i = 0, n = centers.length; i < n; i++) {
     if (centers[i].position.equals(newPosition)) {
       // centers[i].material.color.set(Math.random() * 0xffffff);
-      console.log("FOUND CENTER!");
+      // console.log("FOUND CENTER!");
       return [centers[i], face, cubeSide];
     }
   }
@@ -647,10 +610,13 @@ function ConnectToCenter(center, cubes, axis, face, cubeSide) {
       cubes[i].position[side] == center.position[side] &&
       cubes[i] != center
     ) {
-      console.log("connected a cube to center");
       const worldPosition = new THREE.Vector3();
       cubes[i].getWorldPosition(worldPosition);
-      // console.log("before: ", cubes[i].position);
+
+      const worldQuaternion = new THREE.Quaternion();
+
+      cubes[i].getWorldQuaternion(worldQuaternion);
+
       center.worldToLocal(worldPosition);
       worldPosition.x = parseFloat(worldPosition.x.toFixed(6));
       worldPosition.y = parseFloat(worldPosition.y.toFixed(6));
@@ -659,6 +625,8 @@ function ConnectToCenter(center, cubes, axis, face, cubeSide) {
       cubes[i].position.copy(worldPosition);
       //   console.log("after: ", cubes[i].position);
       center.add(cubes[i]);
+
+      cubes[i].quaternion.copy(worldQuaternion);
       connectedCubes.push(cubes[i]);
     }
   }
@@ -703,7 +671,7 @@ function rotateObject(
 function resetCentersRotation(centers) {
   for (let i = 0, n = centers.length; i < n; i++) {
     centers[i].rotation.set(0, 0, 0);
-    console.log("reseted");
+    // console.log("reseted");
   }
 }
 
@@ -732,10 +700,10 @@ function rotateCubes(
   centerRotation,
   centerNewRotation
 ) {
-  console.log("initial: ", centerRotation);
-  console.log("current: ", centerNewRotation);
+  // console.log("initial: ", centerRotation);
+  // console.log("current: ", centerNewRotation);
   for (let i = 0, n = connectedCubes.length; i < n; i++) {
-    console.log("SHIT SHOULD WORK"); // shit does not work
+    // console.log("SHIT SHOULD WORK"); // shit does not work
     connectedCubes[i].rotation.x += centerNewRotation.x;
     connectedCubes[i].rotation.y += centerNewRotation.y;
     connectedCubes[i].rotation.z += centerNewRotation.z; // shit works!!
