@@ -36,13 +36,10 @@ window.addEventListener("resize", function () {
 });
 
 function animate() {
-  requestAnimationFrame(animate);
-  orbitControls.update();
-
-  // updateCircleControls(circleTransformControls);
-  // splitRender(renderer, scene, camera, cameras[0]); // multiscreen
+  // orbitControls.update();
 
   renderer.render(scene, camera);
+  // requestAnimationFrame(animate);
 }
 
 renderer.setAnimationLoop(animate);
@@ -382,7 +379,6 @@ function initRaycast(
       resetCentersRotation(centers);
       centerRotation = null;
     }
-
     center = null;
   });
 
@@ -414,13 +410,15 @@ function initRaycast(
     if (down) {
       [down, axis] = getAxis(event, mousePosition);
       // console.log("position and axis: ", position + axis);
-      if (centers && position && axis && intersects[0].point)
+      if (centers && position && axis && intersects[0].point) {
+        fixPositionFloatError(cubes);
         [center, face, cubeSide] = getCenter(
           centers,
           position,
           axis,
           intersects[0].point
         );
+      }
       if (center) {
         if (!centerRotation) {
           centerRotation = center.rotation;
@@ -486,8 +484,6 @@ function getAxis(event, mousePosition) {
 }
 
 function getCenter(centers, position, axis, intersectPoint) {
-  // let centerY = axis == "x" ? 2.5 : 1.5;
-  // let positionY = position.y;
   let newPosition = new THREE.Vector3();
   let cubeSide;
   const conditionX = position.x == 1.5,
@@ -498,6 +494,10 @@ function getCenter(centers, position, axis, intersectPoint) {
       (conditionX && conditionZ) ||
       (conditionZ && conditionY);
   let face = 1;
+
+  intersectPoint.x = parseFloat(intersectPoint.x.toFixed(2));
+  intersectPoint.y = parseFloat(intersectPoint.y.toFixed(2));
+  intersectPoint.z = parseFloat(intersectPoint.z.toFixed(2));
 
   if (intersectPoint.x == 3 || intersectPoint.x == 0) {
     face = intersectPoint.x == 0 ? 1 : -1;
@@ -537,34 +537,9 @@ function getCenter(centers, position, axis, intersectPoint) {
     newPosition.x = 1.5;
     newPosition.y = 1.5;
     newPosition.z = 1.5;
-    // console.log("CENTER IS CENTER");
   }
-  // } bull shit, may be usefull later
-  // if (position.x == 1.5) {
-  //   if (axis == "x") {
-  //     newPosition.x = 1.5;
-  //     newPosition.z = 1.5;
-  //     newPosition.y = position.y;
-  //   }
-
-  // if (axis == "x") {
-  //   // WILL BE BACK!!
-  //   let commonAxis = position.y;
-  // } else {
-  //   for (let i = 0, n = centers.length; i < n; i++) {
-  //     if (
-  //       centers.position.z == position.z ||
-  //       centers.position.x == position.x
-  //     ) {
-  //       console.log("FOUND CENTER!");
-  //       return centers[i];
-  //     }
-  //   }
-  // }
   for (let i = 0, n = centers.length; i < n; i++) {
     if (centers[i].position.equals(newPosition)) {
-      // centers[i].material.color.set(Math.random() * 0xffffff);
-      // console.log("FOUND CENTER!");
       return [centers[i], face, cubeSide];
     }
   }
@@ -694,21 +669,14 @@ function initLight(scene) {
   scene.add(ambientLight);
 }
 
-function rotateCubes(
-  connectedCubes,
-  center,
-  centerRotation,
-  centerNewRotation
-) {
-  // console.log("initial: ", centerRotation);
-  // console.log("current: ", centerNewRotation);
-  for (let i = 0, n = connectedCubes.length; i < n; i++) {
-    // console.log("SHIT SHOULD WORK"); // shit does not work
-    connectedCubes[i].rotation.x += centerNewRotation.x;
-    connectedCubes[i].rotation.y += centerNewRotation.y;
-    connectedCubes[i].rotation.z += centerNewRotation.z; // shit works!!
+function fixPositionFloatError(cubes) {
+  for (let i = 0, n = cubes.length; i < n; i++) {
+    cubes[i].position.x = parseFloat(cubes[i].position.x.toFixed(2));
+    cubes[i].position.y = parseFloat(cubes[i].position.y.toFixed(2));
+    cubes[i].position.z = parseFloat(cubes[i].position.z.toFixed(2));
   }
 }
+
 // function
 
 // width = 1920
