@@ -1,0 +1,36 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+nav {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+}
+button {
+  margin: 5px;
+  padding: 10px;
+  font-size: 14px;
+}
+
+#shuffle {
+  position: absolute;
+  top: 20px; /* Adjust as needed */
+  left: 20px; /* Adjust as needed */
+  background-color: #4caf50; /* Green background */
+  border: none; /* No border */
+  color: white; /* White text */
+  padding: 15px 32px; /* Some padding */
+  text-align: center; /* Centered text */
+  text-decoration: none; /* No underline */
+  display: inline-block; /* Inline-block */
+  font-size: 16px; /* Set a font size */
+  margin: 4px 2px; /* Some margin */
+  cursor: pointer; /* Pointer/hand icon */
+  border-radius: 12px; /* Rounded corners */
+}
+
+#shuffle:hover {
+  background-color: #45a049; /* Darker green on hover */
+}

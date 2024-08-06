@@ -28,6 +28,20 @@ initRaycast(
   resetCentersRotation
 );
 
+const button = document.getElementById("shuffle");
+
+button.addEventListener("click", function () {
+  let counter = 0;
+  function repeatShuffle() {
+    if (counter < 100) {
+      shuffle(centers, cubes, scene);
+      counter++;
+      setTimeout(repeatShuffle, 10);
+    }
+  }
+  repeatShuffle();
+});
+
 window.addEventListener("resize", function () {
   resize(camera, renderer);
 });
@@ -352,15 +366,8 @@ function initRaycast(
         x: event.clientX,
         y: event.clientY,
       };
-      if (center)
-        rotateObject(
-          center,
-          deltaMove,
-          axis3D,
-          rotationSpeed,
-          face,
-          connectedCubes
-        );
+
+      if (center) rotateObject(center, deltaMove, axis3D, rotationSpeed, face);
     }
   });
 }
@@ -472,7 +479,6 @@ function ConnectToCenter(center, cubes, axis, face, cubeSide) {
         side = "y";
       }
   }
-  let color = Math.random() * 0xffffff;
   for (let i = 0; i < cubes.length; i++) {
     if (
       cubes[i].position[side] == center.position[side] &&
@@ -500,14 +506,8 @@ function ConnectToCenter(center, cubes, axis, face, cubeSide) {
 }
 
 // Function to rotate object along specified axis
-function rotateObject(
-  object,
-  deltaMove,
-  axis,
-  rotationSpeed,
-  face,
-  connectedCubes
-) {
+function rotateObject(object, deltaMove, axis, rotationSpeed, face) {
+  console.log("rotated");
   switch (axis) {
     case "x":
       object.rotation.x += -deltaMove.y * rotationSpeed * face;
@@ -552,4 +552,65 @@ function fixPositionFloatError(cubes) {
     cubes[i].position.y = parseFloat(cubes[i].position.y.toFixed(2));
     cubes[i].position.z = parseFloat(cubes[i].position.z.toFixed(2));
   }
+}
+
+function fixRotationFloatError(cubes) {
+  for (let i = 0, n = cubes.length; i < n; i++) {
+    cubes[i].rotation.x = parseFloat(cubes[i].rotation.x.toFixed(2));
+    cubes[i].rotation.y = parseFloat(cubes[i].rotation.y.toFixed(2));
+    cubes[i].rotation.z = parseFloat(cubes[i].rotation.z.toFixed(2));
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+function shuffle(centers, cubes, scene, lastMove) {
+  let axis3D, connectedCubes, currentMove;
+  let rotationSpeed = 0.01;
+  let axis = 0;
+  let cubeSides = ["x", "y", "z"];
+  let xy = ["x", "y"];
+  let deltaMove = {
+    x: 0,
+    y: 0,
+  };
+
+  let resultAxis = xy[Math.floor(Math.random() * 2)];
+
+  deltaMove[resultAxis] += 90;
+
+  axis = resultAxis;
+
+  const randomIndex = Math.floor(Math.random() * centers.length);
+  let center = centers[randomIndex];
+  let face = Math.floor(Math.random() * 2 - 1);
+  let cubeSide = Math.floor(Math.random() * cubeSides.length);
+
+  [axis3D, connectedCubes] = ConnectToCenter(
+    center,
+    cubes,
+    axis,
+    face,
+    cubeSide
+  );
+
+  console.log(typeof center);
+  console.log(typeof deltaMove);
+  console.log(typeof axis3D);
+  console.log(typeof rotationSpeed);
+  console.log(typeof face);
+
+  fixRotationFloatError(cubes);
+  fixPositionFloatError(cubes);
+
+  rotateObject(center, deltaMove, axis3D, rotationSpeed, face);
+
+  rotateAxis(center);
+  disconnectCubes(cubes, scene);
+  resetCentersRotation(centers);
+}
+
+function resetCube(cubes) {
+  cubes.forEach((cube) => {
+    cube.rotation.set(0, 0, 0);
+  });
 }
