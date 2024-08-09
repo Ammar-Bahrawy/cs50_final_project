@@ -2,59 +2,83 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
 
-const numCubes = 27;
-const gridSize = 3;
-const scene = initScene();
-const camera = initCamera();
-const renderer = initRenderer();
+main();
+function main() {
+  const numCubes = 27;
+  const gridSize = 3;
+  const scene = initScene();
+  const camera = initCamera();
+  const renderer = initRenderer();
 
-const orbitControls = initOrbitControls(camera, renderer);
+  const orbitControls = initOrbitControls(camera, renderer);
 
-const textures = initTexture();
-initLight(scene);
+  const textures = initTexture();
+  initLight(scene);
 
-const cubes = initCube(scene, numCubes, gridSize, textures);
-const centers = initCenters(scene, cubes, textures);
-initRaycast(
-  camera,
-  scene,
-  renderer,
-  cubes,
-  onPointerDown,
-  orbitControls,
-  getAxis,
-  getCenter,
-  centers,
-  resetCentersRotation
-);
+  const cubes = initCube(scene, numCubes, gridSize, textures);
+  const centers = initCenters(scene, cubes, textures);
+  const handlePointerDownListener = initRaycast(
+    camera,
+    scene,
+    renderer,
+    cubes,
+    onPointerDown,
+    orbitControls,
+    getAxis,
+    getCenter,
+    centers,
+    resetCentersRotation
+  );
 
-const button = document.getElementById("shuffle");
+  let button = document.getElementById("shuffle");
 
-button.addEventListener("click", function () {
-  let counter = 0;
-  function repeatShuffle() {
-    if (counter < 100) {
-      shuffle(centers, cubes, scene);
-      counter++;
-      setTimeout(repeatShuffle, 10);
+  button.addEventListener("click", function () {
+    // console.log("clicked: ", handlePointerDownListener);
+    renderer.domElement.removeEventListener(
+      "pointerdown",
+      handlePointerDownListener
+    );
+
+    let counter = 0;
+
+    function repeatShuffle() {
+      let lastMove;
+      if (counter < 50) {
+        lastMove = shuffle(centers, cubes, scene, lastMove);
+        counter++;
+        setTimeout(repeatShuffle, 10);
+      } else {
+        console.log("Got to the esle clause");
+        // Re-add the pointerdown listener after shuffling is complete
+        renderer.domElement.addEventListener(
+          "pointerdown",
+          handlePointerDownListener
+        );
+      }
     }
+
+    repeatShuffle();
+
+    renderer.domElement.addEventListener(
+      "pointerdown",
+      handlePointerDownListener
+    );
+  });
+
+  window.addEventListener("resize", function () {
+    resize(camera, renderer);
+  });
+
+  function animate() {
+    // orbitControls.update();
+
+    renderer.render(scene, camera);
+    // requestAnimationFrame(animate);
   }
-  repeatShuffle();
-});
 
-window.addEventListener("resize", function () {
-  resize(camera, renderer);
-});
-
-function animate() {
-  // orbitControls.update();
-
-  renderer.render(scene, camera);
-  // requestAnimationFrame(animate);
+  renderer.setAnimationLoop(animate);
+  // }
 }
-
-renderer.setAnimationLoop(animate);
-// }
 
 function initScene() {
   return new THREE.Scene();
@@ -304,15 +328,17 @@ function initRaycast(
     if (center) {
       rotateAxis(center);
       centerNewRotation = center.rotation;
-      isMouseDown = false;
       disconnectCubes(cubes, scene);
       resetCentersRotation(centers);
       centerRotation = null;
     }
+    isMouseDown = false;
     center = null;
   });
 
-  renderer.domElement.addEventListener("pointerdown", function (event) {
+  function handlePointerDownListener(event) {
+    console.log("Added or removed listener.");
+    isMouseDown = true;
     pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
@@ -326,9 +352,12 @@ function initRaycast(
       x: event.clientX,
       y: event.clientY,
     };
+  }
 
-    isMouseDown = true;
-  });
+  renderer.domElement.addEventListener(
+    "pointerdown",
+    handlePointerDownListener
+  );
 
   renderer.domElement.addEventListener("mousemove", function (event) {
     if (down) {
@@ -370,6 +399,8 @@ function initRaycast(
       if (center) rotateObject(center, deltaMove, axis3D, rotationSpeed, face);
     }
   });
+
+  return handlePointerDownListener;
 }
 
 function getAxis(event, mousePosition) {
@@ -507,7 +538,7 @@ function ConnectToCenter(center, cubes, axis, face, cubeSide) {
 
 // Function to rotate object along specified axis
 function rotateObject(object, deltaMove, axis, rotationSpeed, face) {
-  console.log("rotated");
+  // console.log("face: ", face);
   switch (axis) {
     case "x":
       object.rotation.x += -deltaMove.y * rotationSpeed * face;
@@ -564,8 +595,44 @@ function fixRotationFloatError(cubes) {
 
 ///////////////////////////////////////////////////////////////////////////////////
 function shuffle(centers, cubes, scene, lastMove) {
-  let axis3D, connectedCubes, currentMove;
   let rotationSpeed = 0.01;
+  let axis3D, connectedCubes, newMove;
+
+  do {
+    newMove = generateRandomMove(centers);
+  } while (lastMove && JSON.stringify(newMove) === JSON.stringify(lastMove));
+
+  lastMove = newMove;
+
+  let face = Math.floor(Math.random() * 2) * 2 - 1;
+
+  [axis3D, connectedCubes] = ConnectToCenter(
+    newMove.center,
+    cubes,
+    newMove.axis,
+    face,
+    newMove.cubeSide
+  );
+
+  // console.log(newMove.center);
+  // console.log(newMove.deltaMove);
+  // console.log(axis3D);
+  // console.log(newMove.axis);
+  // console.log(face);
+
+  fixRotationFloatError(cubes);
+  fixPositionFloatError(cubes);
+
+  rotateObject(newMove.center, newMove.deltaMove, axis3D, rotationSpeed, face);
+
+  rotateAxis(newMove.center);
+  disconnectCubes(cubes, scene);
+  resetCentersRotation(centers);
+
+  return lastMove;
+}
+
+function generateRandomMove(centers) {
   let axis = 0;
   let cubeSides = ["x", "y", "z"];
   let xy = ["x", "y"];
@@ -582,31 +649,10 @@ function shuffle(centers, cubes, scene, lastMove) {
 
   const randomIndex = Math.floor(Math.random() * centers.length);
   let center = centers[randomIndex];
-  let face = Math.floor(Math.random() * 2 - 1);
+
   let cubeSide = Math.floor(Math.random() * cubeSides.length);
 
-  [axis3D, connectedCubes] = ConnectToCenter(
-    center,
-    cubes,
-    axis,
-    face,
-    cubeSide
-  );
-
-  console.log(typeof center);
-  console.log(typeof deltaMove);
-  console.log(typeof axis3D);
-  console.log(typeof rotationSpeed);
-  console.log(typeof face);
-
-  fixRotationFloatError(cubes);
-  fixPositionFloatError(cubes);
-
-  rotateObject(center, deltaMove, axis3D, rotationSpeed, face);
-
-  rotateAxis(center);
-  disconnectCubes(cubes, scene);
-  resetCentersRotation(centers);
+  return { axis, deltaMove, center, cubeSide };
 }
 
 function resetCube(cubes) {
